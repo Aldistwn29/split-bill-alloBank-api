@@ -4,8 +4,7 @@ A REST API for managing shared expenses within a group — a trip, a team
 lunch, or a shared apartment. Participants take turns paying, and at the end
 the API computes everyone's net position: who owes whom, and how much.
 
-Built for the [Allo Bank Backend Developer Take-Home Test]
-(https://github.com/allobankdev/allo-backend-test).
+Built for the [Allo Bank Backend Developer Take-Home Test](https://github.com/allobankdev/allo-backend-test).
 
 ## Challenge Overview
 
@@ -63,9 +62,14 @@ zero** — money only changes hands, it never disappears.
 # With Docker (multi-stage build)
 docker build -t splitbill .
 docker run --name splitbill-api -p 4110:4110 splitbill
+```
+
 The database uses H2 in-memory — data resets every time the application
 restarts.
-Example curl Commands
+
+## Example curl Commands
+
+```bash
 # 1. Create a group
 curl -X POST http://localhost:4110/api/groups \
   -H "Content-Type: application/json" \
@@ -94,7 +98,11 @@ curl http://localhost:4110/api/groups/1/settlement
 
 # 7. Category summary
 curl http://localhost:4110/api/groups/1/expenses/summary
-Sample Response — Settlement
+```
+
+### Sample Response — Settlement
+
+```json
 {
   "totalExpenses": 100.00,
   "service_charge_pct": 7,
@@ -105,52 +113,69 @@ Sample Response — Settlement
     { "participantId": 3, "participantName": "abdul", "netBalance": 0.00 }
   ]
 }
-Personalization — Service Charge
+```
+
+## Personalization — Service Charge
+
 Every settlement response includes two computed fields — never hardcoded:
-- service_charge_pct — lowercase the GitHub username, sum the ASCII values
-of all characters, then take % 10
-- service_charge_amount — that percentage applied to the group's total
-expenses
-For GitHub username Aldistwn29 (lowercase aldistwn29):
+
+- `service_charge_pct` — lowercase the GitHub username, sum the ASCII values
+  of all characters, then take `% 10`
+- `service_charge_amount` — that percentage applied to the group's total
+  expenses
+
+For GitHub username `Aldistwn29` (lowercase `aldistwn29`):
+
+```text
 97 + 108 + 100 + 105 + 115 + 116 + 119 + 110 + 50 + 57 = 977
 service_charge_pct = 977 % 10 = 7 (7%)
-The value can be overridden via the GITHUB_USERNAME environment variable.
-Design & Strategy Notes (Show Your Skills)
-Core invariant: Σ share == amount. All divisions are computed in integer
-cents (long), never in floating point. When a division does not divide
+```
+
+The value can be overridden via the `GITHUB_USERNAME` environment variable.
+
+## Design & Strategy Notes (Show Your Skills)
+
+**Core invariant: Σ share == amount.** All divisions are computed in integer
+cents (`long`), never in floating point. When a division does not divide
 evenly — e.g. 100.00 among 3 people — the leftover cents are handed out one
 cent at a time to the first participants in input order: a deterministic rule
 that keeps the invariant true by construction.
+
 Three split strategies (EQUAL / EXACT / PERCENTAGE) share one pure
 calculator with no I/O; the service validates relations (membership,
 duplicates), while the calculator validates the math (percentages must sum to
 exactly 100.00, positive values, sub-cent rejected). Adding a new strategy
 requires no controller changes.
+
 Expense categories — every expense is categorized (FOOD / TRANSPORT /
 ACCOMMODATION / OTHER), and the summary endpoint totals expenses per category
 to make group spending analysis easy.
-Submission Question
-"What was the hardest design decision you made while building this, and
-what trade-off did you accept?"
-The hardest decision was how to divide an amount that cannot be split
-evenly down to the cent — for example, splitting 100.00 among three people.
-Rounding each share independently can make the sum of shares drift away
-from the original amount, which is unacceptable for financial data: the
-invariant "sum of all shares equals the expense amount" had to hold by
-construction, not by luck. I chose to compute in integer cents and hand the
-leftover one-cent remainders to the first participants in input order — a
-deterministic, invariant-safe rule. The trade-off I accepted is a small,
-documented asymmetry: the first beneficiary can carry a few extra cents,
-and the outcome depends on input order. I consider that acceptable because
-money must always balance, while "who receives the extra cent" is a stable,
-explainable rule rather than hidden rounding magic.
-Limitations & Future Improvements
+
+## Submission Question
+
+**"What was the hardest design decision you made while building this, and
+what trade-off did you accept?"**
+
+> The hardest decision was how to divide an amount that cannot be split
+> evenly down to the cent — for example, splitting 100.00 among three people.
+> Rounding each share independently can make the sum of shares drift away
+> from the original amount, which is unacceptable for financial data: the
+> invariant "sum of all shares equals the expense amount" had to hold by
+> construction, not by luck. I chose to compute in integer cents and hand the
+> leftover one-cent remainders to the first participants in input order — a
+> deterministic, invariant-safe rule. The trade-off I accepted is a small,
+> documented asymmetry: the first beneficiary can carry a few extra cents,
+> and the outcome depends on input order. I consider that acceptable because
+> money must always balance, while "who receives the extra cent" is a stable,
+> explainable rule rather than hidden rounding magic.
+
+## Limitations & Future Improvements
+
 - Expenses are add-only (no edit/delete yet)
 - The settlement is a net-balance view; transaction optimization (greedy
-minimal payments) is not implemented
+  minimal payments) is not implemented
 - With very small amounts (e.g. 0.01), split strategies can produce a 0.00
-share for some participants — consistent, documented behavior
+  share for some participants — consistent, documented behavior
 - H2 in-memory satisfies the "start without manual steps" requirement; for
-production, swapping the dependency + URL to PostgreSQL requires no domain
-code changes
-```
+  production, swapping the dependency + URL to PostgreSQL requires no domain
+  code changes
