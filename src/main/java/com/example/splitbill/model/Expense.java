@@ -54,11 +54,17 @@ public class Expense {
     @OrderBy("id ASC")
     private List<ExpenseSplit> expenseSplits = new ArrayList<>();
 
+    @Column(nullable = false, updatable = false)
+    @Enumerated(EnumType.STRING)
+
+    private ExpenseCategory category;
+
     protected Expense() {
 
     }
 
-    public Expense(BigDecimal amount, Participant payer, BillGroup billGroup, String description, SplitType splitType) {
+    public Expense(BigDecimal amount, Participant payer, BillGroup billGroup, String description, SplitType splitType,
+            ExpenseCategory category) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Amount expense harus lebih besar dari nol");
         }
@@ -69,6 +75,10 @@ public class Expense {
 
         if (description != null && description.isBlank()) {
             throw new IllegalArgumentException("Description tidak boleh kosong");
+        }
+
+        if (category == null) {
+            throw new IllegalArgumentException("Category expense tidak boleh null");
         }
 
         BigDecimal validatedAmount;
@@ -89,6 +99,7 @@ public class Expense {
         this.amount = validatedAmount;
         this.payer = payer;
         this.description = description;
+        this.category = category;
         this.splitType = splitType;
         this.billGroup = billGroup;
         this.createdAt = LocalDate.now();
@@ -155,5 +166,9 @@ public class Expense {
 
     public SplitType getSplitType() {
         return splitType;
+    }
+
+    public ExpenseCategory getCategory() {
+        return category;
     }
 }

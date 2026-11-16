@@ -2,6 +2,7 @@ package com.example.splitbill.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -22,6 +23,7 @@ import com.example.splitbill.dto.response.SettlementResponse;
 import com.example.splitbill.exception.ResourceNotFoundException;
 import com.example.splitbill.model.BillGroup;
 import com.example.splitbill.model.Expense;
+import com.example.splitbill.model.ExpenseCategory;
 import com.example.splitbill.model.ExpenseSplit;
 import com.example.splitbill.model.Participant;
 import com.example.splitbill.model.SplitType;
@@ -59,7 +61,7 @@ public class SettlementServiceTest {
     }
 
     @Test
-    void getSettlement_unknownGroup_throwsResourceNotFoundException() {
+    void getSettlement_groupNotFound_throwsNotFound() {
         when(billGroupRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service().getSettlement(99L))
@@ -75,15 +77,15 @@ public class SettlementServiceTest {
         when(billGroupRepository.findById(1L)).thenReturn(Optional.of(group));
         when(expenseRepository.findAllForSettlement(1L)).thenReturn(List.of());
         when(settlementCalculator.calculateBalances(
-                org.mockito.ArgumentMatchers.eq(group.getParticipants()),
-                org.mockito.ArgumentMatchers.eq(List.of())))
+                eq(group.getParticipants()),
+                eq(List.of())))
                 .thenReturn(List.of(
                         new Balance(group.getParticipants().get(0), new BigDecimal("0.00")),
                         new Balance(group.getParticipants().get(1), new BigDecimal("0.00")),
                         new Balance(group.getParticipants().get(2), new BigDecimal("0.00"))));
         when(settlementCalculator.calculateServiceCharge(
-                org.mockito.ArgumentMatchers.eq(new BigDecimal("0.00")),
-                org.mockito.ArgumentMatchers.eq(USERNAME)))
+                eq(new BigDecimal("0.00")),
+                eq(USERNAME)))
                 .thenReturn(new ServiceCharge(7, new BigDecimal("0.00")));
 
         SettlementResponse response = service().getSettlement(1L);
@@ -96,21 +98,21 @@ public class SettlementServiceTest {
     }
 
     @Test
-    void getSettlement_happyPath_returnsBalancesAndCharge() {
+    void getSettlement_happyPath_returnsBalancesAndServiceCharge() {
         BillGroup group = groupWithParticipants();
         List<Expense> expenses = List.of(buildExpense(group, new BigDecimal("300000.00")));
         when(billGroupRepository.findById(1L)).thenReturn(Optional.of(group));
         when(expenseRepository.findAllForSettlement(1L)).thenReturn(expenses);
         when(settlementCalculator.calculateBalances(
-                org.mockito.ArgumentMatchers.eq(group.getParticipants()),
-                org.mockito.ArgumentMatchers.eq(expenses)))
+                eq(group.getParticipants()),
+                eq(expenses)))
                 .thenReturn(List.of(
                         new Balance(group.getParticipants().get(0), new BigDecimal("199666.66")),
                         new Balance(group.getParticipants().get(1), new BigDecimal("-100333.33")),
                         new Balance(group.getParticipants().get(2), new BigDecimal("-333.33"))));
         when(settlementCalculator.calculateServiceCharge(
-                org.mockito.ArgumentMatchers.eq(new BigDecimal("300000.00")),
-                org.mockito.ArgumentMatchers.eq(USERNAME)))
+                eq(new BigDecimal("300000.00")),
+                eq(USERNAME)))
                 .thenReturn(new ServiceCharge(7, new BigDecimal("21000.00")));
 
         SettlementResponse response = service().getSettlement(1L);
@@ -125,7 +127,7 @@ public class SettlementServiceTest {
 
     private Expense buildExpense(BillGroup group, BigDecimal amount) {
         Participant payer = group.getParticipants().get(0);
-        Expense expense = new Expense(amount, payer, group, "Villa", SplitType.EQUAL);
+        Expense expense = new Expense(amount, payer, group, "Villa", SplitType.EQUAL, ExpenseCategory.FOOD);
         long totalCents = amount.movePointRight(2).longValueExact();
         long base = totalCents / 3;
         long remainder = totalCents % 3;

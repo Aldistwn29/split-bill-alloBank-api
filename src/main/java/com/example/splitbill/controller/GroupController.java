@@ -9,9 +9,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 import com.example.splitbill.dto.request.CreateGroupRequest;
+import com.example.splitbill.dto.response.CategorySummaryResponse;
 import com.example.splitbill.dto.response.GroupResponse;
 import com.example.splitbill.dto.response.SettlementResponse;
+import com.example.splitbill.service.ExpenseService;
 import com.example.splitbill.service.GroupService;
 import com.example.splitbill.service.SettlementService;
 
@@ -24,10 +28,13 @@ public class GroupController {
 
     private final GroupService groupService;
     private final SettlementService settlementService;
+    private final ExpenseService expenseService;
 
-    public GroupController(GroupService groupService, SettlementService settlementService) {
+    public GroupController(GroupService groupService, SettlementService settlementService,
+            ExpenseService expenseService) {
         this.groupService = groupService;
         this.settlementService = settlementService;
+        this.expenseService = expenseService;
     }
 
     @PostMapping
@@ -44,5 +51,10 @@ public class GroupController {
     @GetMapping("/{id}/settlement")
     public SettlementResponse getSettlement(@PathVariable Long id) {
         return settlementService.getSettlement(id);
+    }
+
+    @GetMapping("/{id}/expenses/summary")
+    public List<CategorySummaryResponse> getCategorySummary(@PathVariable Long id) {
+        return expenseService.getCategorySummary(id);
     }
 }

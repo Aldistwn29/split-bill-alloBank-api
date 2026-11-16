@@ -19,4 +19,6 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
             order by expense.id
         """)
     List<Expense> findAllForSettlement(@Param("groupId") Long groupId);
+
+    List<Expense> findByBillGroupId(Long groupId);
 }

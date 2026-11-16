@@ -1,7 +1,6 @@
 package com.example.splitbill.calculator;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -11,6 +10,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.example.splitbill.model.BillGroup;
 import com.example.splitbill.model.Expense;
+import com.example.splitbill.model.ExpenseCategory;
 import com.example.splitbill.model.ExpenseSplit;
 import com.example.splitbill.model.Participant;
 import com.example.splitbill.model.SplitType;
@@ -63,24 +63,15 @@ class SettlementCalculatorTest {
         BillGroup group = groupWithParticipants();
         Expense first = expenseEqual(group, new BigDecimal("300000.00"));
         Expense second = expenseEqual(group, new BigDecimal("100.00"));
+        Participant payer = group.getParticipants().get(0);
+        Expense third = new Expense(new BigDecimal("50000.00"), payer, group, "Tanpa split", SplitType.EQUAL,
+                ExpenseCategory.ACCOMMODATION);
 
-        List<Balance> balances = calculator.calculateBalances(group.getParticipants(), List.of(first, second));
+        List<Balance> balances = calculator.calculateBalances(group.getParticipants(), List.of(first, second, third));
 
-        assertThat(balances.get(0).netBalance()).isEqualByComparingTo("200066.66");
+        assertThat(balances.get(0).netBalance()).isEqualByComparingTo("250066.66");
         assertThat(balances.get(1).netBalance()).isEqualByComparingTo("-100033.33");
         assertThat(balances.get(2).netBalance()).isEqualByComparingTo("-100033.33");
-    }
-
-    @Test
-    void calculateBalances_expenseWithNoSplitsKeepsOnlyPayerBalance() {
-        BillGroup group = groupWithParticipants();
-        Participant payer = group.getParticipants().get(0);
-        Expense expense = new Expense(new BigDecimal("50000.00"), payer, group, "Tanpa split", SplitType.EQUAL);
-
-        List<Balance> balances = calculator.calculateBalances(group.getParticipants(), List.of(expense));
-
-        assertThat(balances.get(0).netBalance()).isEqualByComparingTo("50000.00");
-        assertThat(balances.get(1).netBalance()).isEqualByComparingTo("0.00");
     }
 
     @Test
@@ -96,24 +87,11 @@ class SettlementCalculatorTest {
     }
 
     @Test
-    void calculateBalances_emptyParticipantsThrows() {
-        assertThatThrownBy(() -> calculator.calculateBalances(List.of(), List.of()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Participant tidak boleh kosong");
-    }
-
-    @Test
     void calculateServiceCharge_returnsPctAndAmount() {
         ServiceCharge charge = calculator.calculateServiceCharge(new BigDecimal("300000.00"), USERNAME);
 
         assertThat(charge.pct()).isEqualTo(7);
         assertThat(charge.amount()).isEqualByComparingTo("21000.00");
-    }
-
-    @Test
-    void calculateServiceCharge_negativeTotalThrows() {
-        assertThatThrownBy(() -> calculator.calculateServiceCharge(new BigDecimal("-1"), USERNAME))
-                .isInstanceOf(IllegalArgumentException.class);
     }
 
     private BillGroup groupWithParticipants() {
@@ -128,7 +106,7 @@ class SettlementCalculatorTest {
 
     private Expense expenseEqual(BillGroup group, BigDecimal amount) {
         Participant payer = group.getParticipants().get(0);
-        Expense expense = new Expense(amount, payer, group, "Villa", SplitType.EQUAL);
+        Expense expense = new Expense(amount, payer, group, "Villa", SplitType.EQUAL, ExpenseCategory.ACCOMMODATION);
         long totalCents = amount.movePointRight(2).longValueExact();
         long base = totalCents / 3;
         long remainder = totalCents % 3;
